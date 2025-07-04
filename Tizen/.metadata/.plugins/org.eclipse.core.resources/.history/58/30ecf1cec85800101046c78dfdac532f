@@ -1,0 +1,163 @@
+window.onload = function () {
+    console.log("Tizen App Loaded.");
+
+    const SERVER_IP = 'localhost';
+    const SERVER_PORT = 8080;
+    
+    const mainContent = document.getElementById('main-content');
+    const sideBanner = document.getElementById('side-banner');
+    const bottomTickerText = document.querySelector('#bottom-ticker .scrolling-text p');
+    
+    let carouselInterval = null;
+    let ytPlayer;
+    let spotifyPlayer;
+
+    // --- NEW: Race Condition Handling ---
+    let isYouTubeApiReady = false;
+    let commandQueue = [];
+
+    // This function is called by the YouTube script once it's ready.
+    window.onYouTubeIframeAPIReady = function() {
+        console.log("YouTube IFrame API is ready.");
+        isYouTubeApiReady = true;
+        // Process any commands that came in before the API was ready.
+        while(commandQueue.length > 0) {
+            handleCommand(commandQueue.shift());
+        }
+    };
+    // --- END NEW ---
+
+    function connectWebSocket() {
+        const ws = new WebSocket(`ws://${SERVER_IP}:${SERVER_PORT}`);
+        ws.onopen = () => ws.send("Tizen TV reporting for duty!");
+        ws.onmessage = (event) => {
+            try {
+                const command = JSON.parse(event.data);
+                // NEW: Check if the API is ready before processing YouTube commands
+                if ((command.contentType === 'youtube' || command.contentType === 'youtubePlaylist') && !isYouTubeApiReady) {
+                    console.log("YouTube API not ready, queuing command.");
+                    commandQueue.push(command);
+                } else {
+                    handleCommand(command);
+                }
+            }
+            catch (e) {
+                console.error("Failed to handle command:", e);
+                bottomTickerText.textContent = event.data;
+            }
+        };
+        ws.onclose = () => setTimeout(connectWebSocket, 3000);
+        ws.onerror = (err) => console.error('[Client] WebSocket Error: ', err.message);
+    }
+
+    function handleCommand(command) {
+        switch (command.target) {
+            case 'ticker': updateTicker(command.content); break;
+            case 'banner': updateBanner(command.content); break;
+            case 'mainZone': updateMainContent(command.contentType, command.content); break;
+            case 'spotify': initializeSpotifyPlayer(command.content); break;
+            case 'layout': updateLayout(command.content); break;
+            default: console.warn("Unknown command target:", command.target);
+        }
+    }
+    
+    function initializeSpotifyPlayer(content) {
+        if (window.Spotify && !spotifyPlayer) {
+             window.onSpotifyWebPlaybackSDKReady = () => {
+                spotifyPlayer = new Spotify.Player({
+                    name: 'Gaelenix Display',
+                    getOAuthToken: cb => { cb(content.accessToken); }
+                });
+
+                spotifyPlayer.addListener('ready', ({ device_id }) => {
+                    console.log('Spotify Player Ready with Device ID', device_id);
+                });
+
+                spotifyPlayer.addListener('not_ready', ({ device_id }) => {
+                    console.log('Device ID has gone offline', device_id);
+                });
+
+                spotifyPlayer.addListener('initialization_error', ({ message }) => { console.error(message); });
+                spotifyPlayer.addListener('authentication_error', ({ message }) => { console.error(message); });
+                spotifyPlayer.addListener('account_error', ({ message }) => { console.error(message); });
+                
+                spotifyPlayer.connect();
+            };
+        }
+    }
+
+    function updateLayout(content) {
+        // ... (This function is correct and does not need to be changed)
+    }
+    
+    function updateTicker(content) {
+        // ... (This function is correct and does not need to be changed)
+    }
+    
+    function updateBanner(content) {
+        // ... (This function is correct and does not need to be changed)
+    }
+
+    function updateMainContent(type, content) {
+        const soundEnabled = content.soundEnabled === true;
+
+        if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+            ytPlayer.destroy();
+            ytPlayer = null;
+        }
+        mainContent.innerHTML = '';
+
+        if (type === 'youtube') {
+            mainContent.innerHTML = '<div id="youtube-player"></div>';
+            ytPlayer = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: content.videoId,
+                playerVars: {
+                    autoplay: 1, controls: 0, loop: 1,
+                    playlist: content.videoId, mute: 1
+                },
+                events: {
+                    'onStateChange': (event) => {
+                        if (event.data === YT.PlayerState.PLAYING && soundEnabled) {
+                            event.target.unMute();
+                        }
+                    }
+                }
+            });
+        } else if (type === 'youtubePlaylist') {
+            mainContent.innerHTML = '<div id="youtube-player"></div>';
+            ytPlayer = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                playerVars: {
+                    listType: 'playlist', list: content.playlistId,
+                    autoplay: 1, controls: 0, loop: 1, mute: 1
+                },
+                events: {
+                    'onStateChange': (event) => {
+                        if (event.data === YT.PlayerState.PLAYING && soundEnabled) {
+                            event.target.unMute();
+                        }
+                    }
+                }
+            });
+        } else if (type === 'localVideo') {
+            mainContent.innerHTML = `
+                <video id="local-player" width="100%" height="100%"
+                       src="${content.videoUrl}" autoplay loop muted>
+                </video>`;
+            
+            if (soundEnabled) {
+                const localPlayer = document.getElementById('local-player');
+                if (localPlayer) {
+                    localPlayer.addEventListener('playing', () => {
+                        localPlayer.muted = false;
+                    }, { once: true });
+                }
+            }
+        }
+    }
+
+    connectWebSocket();
+};

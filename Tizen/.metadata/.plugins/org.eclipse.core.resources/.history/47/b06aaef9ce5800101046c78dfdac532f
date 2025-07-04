@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Gaelenix Display</title>
+    <link rel="stylesheet" type="text/css" href="css/style.css"/>
+</head>
+<body>
+    <div class="container">
+        <div id="side-banner" class="zone">
+            <img src="https://placehold.co/480x810/1F2937/FFFFFF?text=Side+Banner" alt="Promotional Banner">
+        </div>
+        <div id="main-content" class="zone">
+            <div class="placeholder-text">Main Content Zone</div>
+        </div>
+        <div id="bottom-ticker" class="zone">
+            <div class="scrolling-text">
+                <p>Waiting for connection to the command server...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

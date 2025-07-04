@@ -1,0 +1,134 @@
+window.onload = function () {
+    console.log("Tizen App Loaded.");
+
+    const SERVER_IP = 'localhost'; 
+    const SERVER_PORT = 8080;
+    
+    const mainContent = document.getElementById('main-content');
+    const sideBanner = document.getElementById('side-banner');
+    const bottomTickerText = document.querySelector('#bottom-ticker .scrolling-text p');
+    
+    let carouselInterval = null;
+    
+    let yPlayer;
+
+    function connectWebSocket() {
+        const ws = new WebSocket(`ws://${SERVER_IP}:${SERVER_PORT}`);
+        ws.onopen = () => ws.send("Tizen TV reporting for duty!");
+        ws.onmessage = (event) => {
+            try { handleCommand(JSON.parse(event.data)); }
+            catch (e) { bottomTickerText.textContent = event.data; }
+        };
+        ws.onclose = () => setTimeout(connectWebSocket, 3000);
+        ws.onerror = (err) => console.error('[Client] WebSocket Error: ', err.message);
+    }
+
+    function handleCommand(command) {
+        switch (command.target) {
+            case 'ticker': updateTicker(command.content); break;
+            case 'banner': updateBanner(command.content); break;
+            case 'mainZone': updateMainContent(command.contentType, command.content); break;
+            default: console.warn("Unknown command target:", command.target);
+        }
+    }
+
+    // --- Content Update Functions ---
+
+    function updateTicker(content) {
+        if (content.messages && Array.isArray(content.messages)) {
+            bottomTickerText.textContent = content.messages.join('  •••  ');
+        }
+    }
+    
+    function updateBanner(content) {
+        const images = content.images;
+        if (!images || images.length === 0) {
+            sideBanner.innerHTML = '<img src="https://placehold.co/480x810/1F2937/FFFFFF?text=Side+Banner" alt="Promotional Banner" class="active">';
+            if (carouselInterval) clearInterval(carouselInterval);
+            return;
+        }
+
+        console.log('[Client] Starting image carousel with', images);
+
+        if (carouselInterval) clearInterval(carouselInterval);
+        sideBanner.innerHTML = ''; 
+
+        images.forEach((src, index) => {
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = "Promotional Banner";
+            if (index === 0) img.classList.add('active');
+            sideBanner.appendChild(img);
+        });
+
+        if (images.length > 1) {
+            let currentIndex = 0;
+            carouselInterval = setInterval(() => {
+                const allImages = sideBanner.querySelectorAll('img');
+                allImages[currentIndex].classList.remove('active');
+                
+                currentIndex = (currentIndex + 1) % allImages.length;
+                
+                allImages[currentIndex].classList.add('active');
+            }, 5000); 
+        }
+    }
+
+        function updateMainContent(type, content) {
+        const soundEnabled = content.soundEnabled === true;
+
+        // Clean up previous players if they exist
+        if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+            ytPlayer.destroy();
+            ytPlayer = null;
+        }
+        mainContent.innerHTML = ''; // Clear previous content
+
+        if (type === 'youtube') {
+            // Create a div for the YouTube player to attach to
+            mainContent.innerHTML = '<div id="youtube-player"></div>';
+            
+            // Use the YouTube API to create a player
+            ytPlayer = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: content.videoId,
+                playerVars: {
+                    autoplay: 1,    // Autoplay
+                    controls: 0,    // Hide controls
+                    loop: 1,        // Loop the video
+                    playlist: content.videoId, // Required for looping a single video
+                    mute: 1         // IMPORTANT: Start muted
+                },
+                events: {
+                    // When the player is ready and starts playing, then unmute if needed
+                    'onStateChange': (event) => {
+                        if (event.data === YT.PlayerState.PLAYING && soundEnabled) {
+                            event.target.unMute();
+                        }
+                    }
+                }
+            });
+        } else if (type === 'localVideo') {
+            console.log(`[Client] Loading local video: ${content.videoUrl}`);
+            mainContent.innerHTML = `
+                <video 
+                    id="local-player"                     width="100%" height="100%" 
+                    src="${content.videoUrl}" 
+                    autoplay loop 
+                    muted>                 </video>`;
+            
+            if (soundEnabled) {
+                const localPlayer = document.getElementById('local-player');
+                if (localPlayer) {
+                    // Once the video can play, unmute it.
+                    localPlayer.addEventListener('playing', () => {
+                        localPlayer.muted = false;
+                    }, { once: true }); // Use 'once' to not fire this event repeatedly
+                }
+            }
+        }
+    }
+
+    connectWebSocket();
+};

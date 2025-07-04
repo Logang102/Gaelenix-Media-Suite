@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap, https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap)');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+body {
+    width: 1920px;
+    height: 1080px;
+    background-color: #111827;
+    color: #FFFFFF;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+}
+.container {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 480px 1fr;
+    grid-template-rows: 1fr 120px;
+    grid-template-areas:
+        "side main"
+        "ticker ticker";
+}
+.zone {
+    overflow: hidden;
+    position: relative;
+}
+#side-banner {
+    grid-area: side;
+    background-color: #1F2937;
+}
+#side-banner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+    /* NEW: Add these two lines to lock the image to the top-left */
+    top: 0;
+    left: 0;
+}
+#side-banner img.active {
+    opacity: 1;
+}
+#main-content {
+    grid-area: main;
+    background-color: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.placeholder-text {
+    font-size: 48px;
+    color: #4B5563;
+    font-weight: 900;
+}
+#bottom-ticker {
+    grid-area: ticker;
+    background: linear-gradient(90deg, #E11D48 0%, #BE123C 100%);
+    display: flex;
+    align-items: center;
+    font-size: 42px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.scrolling-text {
+    display: inline-block;
+    padding-left: 100%;
+    animation: scroll-left 30s linear infinite;
+}
+@keyframes scroll-left {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+
+#start-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #111827; /* Dark background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    text-align: center;
+}
+
+.start-content h1 {
+    font-size: 82px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+}
+
+#start-button {
+    padding: 20px 40px;
+    font-size: 36px;
+    font-weight: 500;
+    color: white;
+    background-color: #7c3aed; /* Purple from controller app */
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+    /* Add the pulsating animation */
+    animation: pulse-animation 2s infinite;
+}
+
+#start-button:focus {
+    /* Make the focus outline more noticeable and on-brand */
+    outline: 5px solid #a78bfa;
+    outline-offset: 5px;
+    animation: none; /* Stop pulsing when focused */
+}
+
+/* Keyframe animation for the pulsating effect */
+@keyframes pulse-animation {
+    0% {
+        box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(167, 139, 250, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(167, 139, 250, 0);
+    }
+}

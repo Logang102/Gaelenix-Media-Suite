@@ -1,0 +1,179 @@
+// --- Global Scope ---
+let ytPlayer;
+let spotifyPlayer;
+let isYouTubeApiReady = false;
+let commandQueue = [];
+
+window.onYouTubeIframeAPIReady = function() {
+    console.log("✅ YouTube IFrame API is ready.");
+    isYouTubeApiReady = true;
+    while(commandQueue.length > 0) {
+        handleTizenCommand(commandQueue.shift());
+    }
+};
+
+window.onSpotifyWebPlaybackSDKReady = () => {
+    console.log("✅ Spotify Web Playback SDK is ready.");
+};
+
+function handleTizenCommand(command) {
+    const mainContent = document.getElementById('main-content');
+    const sideBanner = document.getElementById('side-banner');
+    const bottomTickerText = document.querySelector('#bottom-ticker .scrolling-text p');
+
+    switch (command.target) {
+        case 'ticker': updateTicker(command.content, bottomTickerText); break;
+        case 'banner': updateBanner(command.content, sideBanner); break;
+        case 'mainZone': updateMainContent(command.contentType, command.content, mainContent); break;
+        case 'spotify': initializeSpotifyPlayer(command.content); break;
+        case 'layout': updateLayout(command.content); break;
+        default: console.warn("Unknown command target:", command.target);
+    }
+}
+
+// --- Main Application Logic ---
+window.onload = function () {
+    console.log("Tizen App DOM Loaded.");
+
+    const startScreen = document.getElementById('start-screen');
+    const startButton = document.getElementById('start-button');
+    const mainContainer = document.querySelector('.container');
+    
+    // --- Configuration ---
+    const SERVER_IP = '192.168.1.116'; 
+    const SERVER_PORT = 8080;
+
+    // Listen for the first user interaction
+    startButton.addEventListener('click', () => {
+        console.log("🚀 Start button clicked. Initializing application.");
+        
+        // Hide start screen and show the main content
+        startScreen.style.display = 'none';
+        mainContainer.style.display = 'grid';
+
+        // Now that we have user interaction, connect to the server
+        connectWebSocket();
+    });
+
+    function connectWebSocket() {
+        if (!SERVER_IP || SERVER_IP === 'YOUR_COMPUTER_IP_ADDRESS') {
+            const tickerText = document.querySelector('#bottom-ticker .scrolling-text p');
+            console.error("SERVER_IP is not set in js/main.js.");
+            if(tickerText) tickerText.textContent = "Configuration Error: Server IP not set.";
+            return;
+        }
+        
+        const ws = new WebSocket(`ws://${SERVER_IP}:${SERVER_PORT}`);
+
+        ws.onopen = () => console.log("🔌 WebSocket connection established.");
+        ws.onclose = () => setTimeout(connectWebSocket, 3000);
+        ws.onerror = (err) => console.error('WebSocket Error: ', err.message);
+
+        ws.onmessage = (event) => {
+            try {
+                const command = JSON.parse(event.data);
+                console.log("📩 [Client] Received command:", command);
+
+                if ((command.target === 'mainZone' && (command.contentType === 'youtube' || command.contentType === 'youtubePlaylist')) && !isYouTubeApiReady) {
+                    console.log("🕒 YouTube API not ready, queuing command.");
+                    commandQueue.push(command);
+                } else {
+                    handleTizenCommand(command);
+                }
+            }
+            catch (e) {
+                console.error("Failed to handle command:", e);
+            }
+        };
+    }
+};
+
+// --- Content Update Functions ---
+function updateMainContent(type, content, mainContentElement) {
+    if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+        ytPlayer.destroy();
+        ytPlayer = null;
+    }
+    mainContentElement.innerHTML = '';
+
+    // We no longer need the attemptUnmute function as the browser now permits sound.
+    if (type === 'youtube' || type === 'youtubePlaylist') {
+        mainContentElement.innerHTML = '<div id="youtube-player"></div>';
+        
+        let playerVars = { 
+            autoplay: 1, 
+            controls: 0, 
+            loop: 1, 
+            // MODIFIED: We respect the sound setting now. Mute if sound is NOT enabled.
+            mute: content.soundEnabled ? 0 : 1 
+        };
+
+        if (type === 'youtubePlaylist') {
+            playerVars.listType = 'playlist';
+            playerVars.list = content.playlistId;
+        } else {
+            playerVars.playlist = content.videoId;
+        }
+        
+        ytPlayer = new YT.Player('youtube-player', {
+            height: '100%',
+            width: '100%',
+            videoId: (type === 'youtube') ? content.videoId : undefined,
+            playerVars: playerVars
+        });
+
+    } else if (type === 'localVideo') {
+        mainContentElement.innerHTML = `
+            <video id="local-player" width="100%" height="100%"
+                   src="${content.videoUrl}" autoplay loop 
+                   ${content.soundEnabled ? '' : 'muted'}>
+            </video>`;
+    }
+}
+
+// ... All other update functions (updateTicker, updateBanner, etc.) remain unchanged ...
+function initializeSpotifyPlayer(content) {
+    if (spotifyPlayer) spotifyPlayer.disconnect();
+    spotifyPlayer = new Spotify.Player({ name: 'Gaelenix Display', getOAuthToken: cb => cb(content.accessToken) });
+    spotifyPlayer.addListener('ready', ({ device_id }) => console.log('Spotify Player Ready with Device ID', device_id));
+    spotifyPlayer.connect();
+}
+function updateLayout(content) {
+    const container = document.querySelector('.container');
+    if (!container) return;
+    container.classList.remove('layout-fullscreen', 'layout-wide');
+    if (content.mode === 'fullscreen' || content.mode === 'wide') {
+        container.classList.add(`layout-${content.mode}`);
+    }
+}
+function updateTicker(content, tickerElement) {
+    if (content.messages && Array.isArray(content.messages)) {
+        tickerElement.textContent = content.messages.join('   •••   ');
+    }
+}
+let carouselInterval = null;
+function updateBanner(content, bannerElement) {
+    if (carouselInterval) clearInterval(carouselInterval);
+    bannerElement.innerHTML = ''; 
+    const images = content.images;
+    if (!images || images.length === 0) {
+        bannerElement.innerHTML = '<img src="https://placehold.co/480x810/1F2937/FFFFFF?text=Side+Banner" alt="Promotional Banner" class="active">';
+        return;
+    }
+    images.forEach((src, index) => {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = "Promotional Banner";
+        if (index === 0) img.classList.add('active');
+        bannerElement.appendChild(img);
+    });
+    if (images.length > 1) {
+        let currentIndex = 0;
+        carouselInterval = setInterval(() => {
+            const allImages = bannerElement.querySelectorAll('img');
+            allImages[currentIndex].classList.remove('active');
+            currentIndex = (currentIndex + 1) % allImages.length;
+            allImages[currentIndex].classList.add('active');
+        }, 5000); 
+    }
+}
