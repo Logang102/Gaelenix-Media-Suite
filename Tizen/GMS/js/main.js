@@ -1,26 +1,16 @@
 // --- Global Scope ---
-let ytPlayer;
-let spotifyPlayer;
-let isYouTubeApiReady = false;
-let commandQueue = [];
+let ytPlayer, spotifyPlayer, isYouTubeApiReady = false, commandQueue = [];
 
 window.onYouTubeIframeAPIReady = function() {
-    console.log("✅ YouTube IFrame API is ready.");
     isYouTubeApiReady = true;
-    while(commandQueue.length > 0) {
-        handleTizenCommand(commandQueue.shift());
-    }
+    while(commandQueue.length > 0) handleTizenCommand(commandQueue.shift());
 };
-
-window.onSpotifyWebPlaybackSDKReady = () => {
-    console.log("✅ Spotify Web Playback SDK is ready.");
-};
+window.onSpotifyWebPlaybackSDKReady = () => console.log("✅ Spotify Web Playback SDK is ready.");
 
 function handleTizenCommand(command) {
     const mainContent = document.getElementById('main-content');
     const sideBanner = document.getElementById('side-banner');
     const bottomTickerText = document.querySelector('#bottom-ticker .scrolling-text p');
-
     switch (command.target) {
         case 'ticker': updateTicker(command.content, bottomTickerText); break;
         case 'banner': updateBanner(command.content, sideBanner); break;
@@ -35,53 +25,76 @@ function handleTizenCommand(command) {
 window.onload = function () {
     console.log("Tizen App DOM Loaded.");
 
+    // --- Element References ---
+    const setupScreen = document.getElementById('setup-screen');
     const startScreen = document.getElementById('start-screen');
-    const startButton = document.getElementById('start-button');
     const mainContainer = document.querySelector('.container');
+    const ipInput = document.getElementById('ip-input');
+    const saveButton = document.getElementById('save-button');
+    const startButton = document.getElementById('start-button');
+    const setupMessage = document.getElementById('setup-message');
     
     // --- Configuration ---
-    const SERVER_IP = '192.168.1.116'; 
     const SERVER_PORT = 8080;
+    let serverIp = localStorage.getItem('GMS_SERVER_IP') || null;
+    let setupComplete = localStorage.getItem('GMS_SETUP_COMPLETE') === 'true';
 
-    // Listen for the first user interaction
+    // --- Core Startup Logic ---
+    if (setupComplete && serverIp) {
+        // If setup is done, show the normal start screen
+        startScreen.style.display = 'flex';
+    } else {
+        // Otherwise, show the initial setup screen
+        setupScreen.style.display = 'flex';
+        ipInput.value = serverIp || '';
+    }
+
+    // --- Event Listeners ---
+    saveButton.addEventListener('click', () => {
+        const newIp = ipInput.value.trim();
+        if (newIp) {
+            localStorage.setItem('GMS_SERVER_IP', newIp);
+            localStorage.setItem('GMS_SETUP_COMPLETE', 'true');
+            serverIp = newIp;
+            setupComplete = true;
+            // Hide setup screen and show the start screen
+            setupScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+        } else {
+            setupMessage.textContent = "IP Address cannot be empty.";
+            setupMessage.style.color = "#f87171"; // Red
+        }
+    });
+
     startButton.addEventListener('click', () => {
-        console.log("🚀 Start button clicked. Initializing application.");
-        
-        // Hide start screen and show the main content
         startScreen.style.display = 'none';
         mainContainer.style.display = 'grid';
-
-        // Now that we have user interaction, connect to the server
         connectWebSocket();
     });
 
+    // --- WebSocket Connection ---
     function connectWebSocket() {
-        if (!SERVER_IP || SERVER_IP === 'YOUR_COMPUTER_IP_ADDRESS') {
-            const tickerText = document.querySelector('#bottom-ticker .scrolling-text p');
-            console.error("SERVER_IP is not set in js/main.js.");
-            if(tickerText) tickerText.textContent = "Configuration Error: Server IP not set.";
-            return;
-        }
-        
-        const ws = new WebSocket(`ws://${SERVER_IP}:${SERVER_PORT}`);
-
-        ws.onopen = () => console.log("🔌 WebSocket connection established.");
-        ws.onclose = () => setTimeout(connectWebSocket, 3000);
+        const ws = new WebSocket(`ws://${serverIp}:${SERVER_PORT}`);
+        ws.onopen = () => {
+            console.log("🔌 WebSocket connection established.");
+            ws.send("Tizen TV reporting for duty!");
+        };
+        ws.onclose = () => {
+            // If connection fails after setup, show setup screen again
+            mainContainer.style.display = 'none';
+            setupMessage.textContent = `Connection failed. Please check IP: ${serverIp}`;
+            setupScreen.style.display = 'flex';
+        };
         ws.onerror = (err) => console.error('WebSocket Error: ', err.message);
-
         ws.onmessage = (event) => {
             try {
                 const command = JSON.parse(event.data);
-                console.log("📩 [Client] Received command:", command);
-
                 if ((command.target === 'mainZone' && (command.contentType === 'youtube' || command.contentType === 'youtubePlaylist')) && !isYouTubeApiReady) {
-                    console.log("🕒 YouTube API not ready, queuing command.");
                     commandQueue.push(command);
                 } else {
                     handleTizenCommand(command);
                 }
-            }
-            catch (e) {
+            } catch (e) {
                 console.error("Failed to handle command:", e);
             }
         };
@@ -96,32 +109,26 @@ function updateMainContent(type, content, mainContentElement) {
     }
     mainContentElement.innerHTML = '';
 
-    // We no longer need the attemptUnmute function as the browser now permits sound.
     if (type === 'youtube' || type === 'youtubePlaylist') {
         mainContentElement.innerHTML = '<div id="youtube-player"></div>';
-        
         let playerVars = { 
             autoplay: 1, 
             controls: 0, 
             loop: 1, 
-            // MODIFIED: We respect the sound setting now. Mute if sound is NOT enabled.
             mute: content.soundEnabled ? 0 : 1 
         };
-
         if (type === 'youtubePlaylist') {
             playerVars.listType = 'playlist';
             playerVars.list = content.playlistId;
         } else {
             playerVars.playlist = content.videoId;
         }
-        
         ytPlayer = new YT.Player('youtube-player', {
             height: '100%',
             width: '100%',
             videoId: (type === 'youtube') ? content.videoId : undefined,
             playerVars: playerVars
         });
-
     } else if (type === 'localVideo') {
         mainContentElement.innerHTML = `
             <video id="local-player" width="100%" height="100%"
@@ -131,13 +138,13 @@ function updateMainContent(type, content, mainContentElement) {
     }
 }
 
-// ... All other update functions (updateTicker, updateBanner, etc.) remain unchanged ...
 function initializeSpotifyPlayer(content) {
     if (spotifyPlayer) spotifyPlayer.disconnect();
     spotifyPlayer = new Spotify.Player({ name: 'Gaelenix Display', getOAuthToken: cb => cb(content.accessToken) });
     spotifyPlayer.addListener('ready', ({ device_id }) => console.log('Spotify Player Ready with Device ID', device_id));
     spotifyPlayer.connect();
 }
+
 function updateLayout(content) {
     const container = document.querySelector('.container');
     if (!container) return;
@@ -146,11 +153,13 @@ function updateLayout(content) {
         container.classList.add(`layout-${content.mode}`);
     }
 }
+
 function updateTicker(content, tickerElement) {
     if (content.messages && Array.isArray(content.messages)) {
         tickerElement.textContent = content.messages.join('   •••   ');
     }
 }
+
 let carouselInterval = null;
 function updateBanner(content, bannerElement) {
     if (carouselInterval) clearInterval(carouselInterval);

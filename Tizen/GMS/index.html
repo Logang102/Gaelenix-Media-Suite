@@ -7,8 +7,17 @@
     <link rel="stylesheet" type="text/css" href="css/style.css"/>
 </head>
 <body>
-    <div id="start-screen">
-        <div class="start-content">
+    <div id="setup-screen" class="fullscreen-prompt" style="display: none;">
+        <div class="prompt-content">
+            <h1>Initial Setup</h1>
+            <p id="setup-message">Please enter the Server IP from the controller app.</p>
+            <input type="text" id="ip-input" placeholder="e.g., 192.168.1.100">
+            <button id="save-button">Save & Continue</button>
+        </div>
+    </div>
+
+    <div id="start-screen" class="fullscreen-prompt" style="display: none;">
+        <div class="prompt-content">
             <h1>Gaelenix Media Suite</h1>
             <button id="start-button">Press OK to Start</button>
         </div>

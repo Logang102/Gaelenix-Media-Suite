@@ -1,16 +1,19 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Commands to Tizen
+  // Commands
   sendCommand: (command) => ipcRenderer.send('send-command', command),
   
-  // Data & File Operations
+  // Data & Files
   getInitialData: () => ipcRenderer.invoke('get-initial-data'),
   selectMediaFolder: () => ipcRenderer.invoke('select-media-folder'),
   getMediaFiles: () => ipcRenderer.invoke('get-media-files'),
   onMediaFolderChanged: (callback) => ipcRenderer.on('media-folder-changed', (event, ...args) => callback(...args)),
 
-  // Save State
+  // Window Control
+  openPreviewWindow: () => ipcRenderer.send('open-preview-window'),
+
+  // State Saving
   saveTickerMessages: (messages) => ipcRenderer.send('save-ticker-messages', messages),
   saveBannerImages: (images) => ipcRenderer.send('save-banner-images', images),
   saveMainContent: (state) => ipcRenderer.send('save-main-content', state),
@@ -18,5 +21,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Spotify
   spotifyLogin: () => ipcRenderer.invoke('spotify-login'),
   spotifyPlay: (trackUri) => ipcRenderer.invoke('spotify-play', trackUri),
-  spotifyPause: () => ipcRenderer.invoke('spotify-pause')
+  spotifyPause: () => ipcRenderer.invoke('spotify-pause'),
 });

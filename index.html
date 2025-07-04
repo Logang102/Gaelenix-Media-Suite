@@ -4,15 +4,17 @@
     <meta charset="UTF-8" />
     <title>Gaelenix Media Suite - Controller</title>
     <link rel="stylesheet" href="styles.css" />
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;" />
 </head>
 <body>
     <div id="app">
         <header>
             <h1>GAELENIX MEDIA SUITE</h1>
-            <button id="control-settings" class="settings-btn">⚙️</button>
+            <div>
+                <button id="show-preview-btn" class="settings-btn" title="Show Live Preview">📺</button>
+                <button id="control-settings" class="settings-btn" title="Settings">⚙️</button>
+            </div>
         </header>
-
         <div id="tv-selection-container">
             <h2>Target TVs</h2>
             <div id="tv-list">
@@ -32,12 +34,10 @@
                     <h3 id="editing-panel-title"></h3>
                     <button id="close-panel-btn">×</button>
                 </div>
-                <div id="editing-panel-content">
-                    </div>
+                <div id="editing-panel-content"></div>
             </div>
         </div>
     </div>
-    
     <div id="notification-toast" class="notification-toast"></div>
     <script src="renderer.js"></script>
 </body>

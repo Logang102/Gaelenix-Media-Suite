@@ -1,14 +1,15 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // --- Element References ---
-    const [mainContentControl, sideBannerControl, bottomTickerControl, spotifyControl, settingsControl] =
-        ['control-main-content', 'control-side-banner', 'control-bottom-ticker', 'control-spotify-zone', 'control-settings'].map(id => document.getElementById(id));
+    const [mainContentControl, sideBannerControl, bottomTickerControl, spotifyControl, settingsControl, showPreviewBtn] =
+        ['control-main-content', 'control-side-banner', 'control-bottom-ticker', 'control-spotify-zone', 'control-settings', 'show-preview-btn'].map(id => document.getElementById(id));
     const [panelContainer, panelTitle, panelContent, closePanelBtn] =
         ['editing-panel-container', 'editing-panel-title', 'editing-panel-content', 'close-panel-btn'].map(id => document.getElementById(id));
     const notificationEl = document.getElementById('notification-toast');
 
     // --- State Management & Helpers ---
-    let mediaFiles = [], tickerMessages = [], selectedBannerImages = [], mediaFolderPath = '';
-
+    let mediaFiles = [], tickerMessages = [], selectedBannerImages = [], mediaFolderPath = '', localIpAddress = '';
+    
+    // --- Core UI and Helper Functions ---
     function showNotification(message, isError = false) {
         notificationEl.textContent = message;
         notificationEl.className = `notification-toast ${isError ? 'error' : 'success'}`;
@@ -20,9 +21,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         let ID = '';
         if (!url) return '';
         url = url.replace(/(>|<)/gi, '').split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
-        if (url[2] !== undefined) {
-            ID = url[2].split(/[^0-9a-z_\-]/i)[0];
-        } else { ID = url.toString(); }
+        if (url[2] !== undefined) ID = url[2].split(/[^0-9a-z_\-]/i)[0];
+        else ID = url.toString();
         return ID;
     }
 
@@ -43,17 +43,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const listEl = document.getElementById('ticker-message-list');
         if (!listEl) return;
         listEl.innerHTML = tickerMessages.length === 0 ? '<p style="font-size: 0.75rem; color: #9ca3af;">No messages in queue.</p>' :
-            tickerMessages.map((msg, i) => `
-                <div class="preview-item">
-                    <span>${msg}</span>
-                    <div style="flex-shrink: 0;">
-                        <button class="send-btn" data-index="${i}">Send</button>
-                        <button class="remove-btn" data-index="${i}">[x]</button>
-                    </div>
-                </div>`).join('');
+            tickerMessages.map((msg, i) => `<div class="preview-item"><span>${msg}</span><div style="flex-shrink: 0;"><button class="send-btn" data-index="${i}">Send</button><button class="remove-btn" data-index="${i}">[x]</button></div></div>`).join('');
     }
 
-    // --- Panel Content Generation ---
     function openEditingPanel(zoneName) {
         panelTitle.textContent = `Editing: ${zoneName}`;
         let contentHTML = '';
@@ -62,27 +54,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             contentHTML = `
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div>
+                        <p class="label-style">Your Computer's IP Address is:</p>
+                        <p style="font-size: 1.5rem; font-weight: bold; color: #a78bfa; margin-top: 0.25rem;">${localIpAddress}</p>
+                        <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem;">Enter this IP into the Tizen app's setup screen.</p>
+                    </div>
+                    <hr style="border-color: #4b5563; margin: 1rem 0;">
+                    <div>
                         <label class="label-style">Media Folder</label>
                         <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.5rem;">This is the folder where the app looks for images and videos.</p>
                         <p style="font-size: 0.75rem; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${mediaFolderPath}">${mediaFolderPath || 'No folder selected.'}</p>
                         <button id="select-folder-btn" class="btn-secondary" style="margin-top: 0.5rem;">Select New Folder</button>
                     </div>
-                    <hr style="border-color: #4b5563; margin: 1rem 0;">
                 </div>`;
-
         } else if (zoneName === 'Main Content') {
             const videoOptions = mediaFiles.filter(f => f.name.endsWith('.mp4') || f.name.endsWith('.webm')).map(f => `<option value="${f.url}">${f.name}</option>`).join('');
             contentHTML = `
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <p style="font-size: 0.75rem; color: #9ca3af;">Changes here are sent to the TV immediately and saved for next time.</p>
                     <hr style="border-color: #4b5563;">
-                    
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <input type="checkbox" id="sound-enabled-checkbox" style="width: 1rem; height: 1rem;">
                         <label for="sound-enabled-checkbox" class="label-style" style="margin-bottom: 0;">Start with Sound (May not work on all TVs)</label>
                     </div>
                     <hr style="border-color: #4b5563;">
-                    
                     <div>
                         <label class="label-style">Display Mode</label>
                         <div id="layout-controls" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem;">
@@ -91,13 +85,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <button data-mode="fullscreen" class="btn-secondary layout-btn">Fullscreen</button>
                         </div>
                     </div>
-                    
                     <div>
                         <label for="youtube-url" class="label-style">YouTube URL (Video or Playlist)</label>
                         <input type="text" id="youtube-url" class="input-field" placeholder="Enter a YouTube URL...">
                         <button id="play-youtube-btn" class="btn-primary" style="margin-top: 0.5rem;">Play</button>
                     </div>
-
                     <div>
                        <label for="local-video-select" class="label-style">Select Local Video</label>
                        <div style="display: flex; gap: 0.5rem;">
@@ -107,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>`;
         } else if (zoneName === 'Bottom Ticker') {
-            contentHTML = `
+             contentHTML = `
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div>
                         <label class="label-style">Message Queue</label>
@@ -150,20 +142,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function loadInitialData() {
-        const { config, tickerMessages: savedTickerMessages, bannerImages: savedBannerImages, mainContentState } = await window.electronAPI.getInitialData();
+        const { localIp, config, tickerMessages: savedTickerMessages, bannerImages: savedBannerImages, mainContentState } = await window.electronAPI.getInitialData();
+        localIpAddress = localIp;
         tickerMessages = savedTickerMessages || [];
         selectedBannerImages = savedBannerImages || [];
         mediaFolderPath = config.mediaFolder || '';
-        if (mediaFolderPath) {
-            mediaFiles = await window.electronAPI.getMediaFiles();
-        }
-        if (mainContentState) {
-            window.electronAPI.sendCommand(mainContentState);
-        }
-        if (config.spotifyAuth && config.spotifyAuth.accessToken) {
-            const command = { target: 'spotify', content: { accessToken: config.spotifyAuth.accessToken } };
-            window.electronAPI.sendCommand(command);
-        }
+        if (mediaFolderPath) mediaFiles = await window.electronAPI.getMediaFiles();
     }
 
     // --- Command Handlers ---
@@ -172,23 +156,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const soundEnabled = document.getElementById('sound-enabled-checkbox').checked;
         const url = urlInput.value;
         const playlistId = getYouTubePlaylistId(url);
-        
         let command;
         if (playlistId) {
             command = { target: 'mainZone', contentType: 'youtubePlaylist', content: { playlistId, soundEnabled } };
-            showNotification(`Playing YouTube playlist...`);
         } else {
             const videoId = getYouTubeId(url);
             if (videoId) {
                 command = { target: 'mainZone', contentType: 'youtube', content: { videoId, soundEnabled } };
-                showNotification(`Playing YouTube video...`);
-            } else {
-                showNotification('Invalid YouTube URL.', true);
-                return;
-            }
+            } else { return showNotification('Invalid YouTube URL.', true); }
         }
         window.electronAPI.sendCommand(command);
         window.electronAPI.saveMainContent(command);
+        showNotification(`Playing YouTube content...`);
     }
 
     function handlePlayLocalVideo() {
@@ -235,10 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function handleSendTickerQueue() {
-        if (tickerMessages.length === 0) {
-            showNotification('Ticker queue is empty.', true);
-            return;
-        }
+        if (tickerMessages.length === 0) return showNotification('Ticker queue is empty.', true);
         const command = { target: 'ticker', content: { messages: tickerMessages } };
         window.electronAPI.sendCommand(command);
         showNotification('Ticker queue sent to TVs.');
@@ -262,22 +238,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function handlePlaySpotify() {
         const trackUri = document.getElementById('spotify-uri-input').value;
-        if (!trackUri) {
-            showNotification('Please enter a Spotify track URI.', true);
-            return;
-        }
+        if (!trackUri) return showNotification('Please enter a Spotify track URI.', true);
         const result = await window.electronAPI.spotifyPlay(trackUri);
-        if (result.error) {
-            showNotification(`Spotify Error: ${result.error}`, true);
-            return;
-        }
+        if (result.error) return showNotification(`Spotify Error: ${result.error}`, true);
         const { mainContentState } = await window.electronAPI.getInitialData();
         if (mainContentState) {
-            const muteCommand = {
-                target: 'mainZone',
-                contentType: mainContentState.contentType,
-                content: { ...mainContentState.content, soundEnabled: false }
-            };
+            const muteCommand = { target: 'mainZone', contentType: mainContentState.contentType, content: { ...mainContentState.content, soundEnabled: false } };
             window.electronAPI.sendCommand(muteCommand);
         }
         showNotification('Playing track on Spotify.');
@@ -285,14 +251,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function handlePauseSpotify() {
         const result = await window.electronAPI.spotifyPause();
-        if (result.error) {
-            showNotification(`Spotify Error: ${result.error}`, true);
-            return;
-        }
+        if (result.error) return showNotification(`Spotify Error: ${result.error}`, true);
         const { mainContentState } = await window.electronAPI.getInitialData();
-        if (mainContentState && mainContentState.content.soundEnabled) {
-             window.electronAPI.sendCommand(mainContentState);
-        }
+        if (mainContentState && mainContentState.content.soundEnabled) window.electronAPI.sendCommand(mainContentState);
         showNotification('Music paused.');
     }
 
@@ -313,16 +274,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     bottomTickerControl.addEventListener('click', () => openEditingPanel('Bottom Ticker'));
     spotifyControl.addEventListener('click', () => openEditingPanel('Spotify'));
     settingsControl.addEventListener('click', () => openEditingPanel('Settings'));
+    showPreviewBtn.addEventListener('click', () => window.electronAPI.openPreviewWindow());
     closePanelBtn.addEventListener('click', () => panelContainer.classList.add('hidden'));
 
     panelContent.addEventListener('click', async (e) => {
         const target = e.target;
         const id = target.id;
         
-        if(target.classList.contains('layout-btn')) {
+        if (target.classList.contains('layout-btn')) {
             const mode = target.dataset.mode;
-            const command = { target: 'layout', content: { mode: mode } };
-            window.electronAPI.sendCommand(command);
+            window.electronAPI.sendCommand({ target: 'layout', content: { mode: mode } });
             showNotification(`Layout changed to ${mode}.`);
         }
         else if (id === 'play-youtube-btn') handlePlayVideo();
