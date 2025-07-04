@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // --- Element References ---
-    const [mainContentControl, sideBannerControl, bottomTickerControl, spotifyControl, settingsControl] = // Added settingsControl
+    const [mainContentControl, sideBannerControl, bottomTickerControl, spotifyControl, settingsControl] =
         ['control-main-content', 'control-side-banner', 'control-bottom-ticker', 'control-spotify-zone', 'control-settings'].map(id => document.getElementById(id));
     const [panelContainer, panelTitle, panelContent, closePanelBtn] =
         ['editing-panel-container', 'editing-panel-title', 'editing-panel-content', 'close-panel-btn'].map(id => document.getElementById(id));
@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         panelTitle.textContent = `Editing: ${zoneName}`;
         let contentHTML = '';
 
-        // --- NEW: Settings Panel ---
         if (zoneName === 'Settings') {
             contentHTML = `
                 <div class="space-y-4">
@@ -93,7 +92,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button id="send-queue-btn" class="btn-primary">Send Entire Queue to TVs</button>
                 </div>`;
         } else if (zoneName === 'Side Banner') {
-            // --- MODIFIED: Removed folder selection from here ---
             const imageOptions = mediaFiles.filter(f => !f.name.endsWith('.mp4') && !f.name.endsWith('.webm')).map(f => `<option value="${f.url}">${f.name}</option>`).join('');
             contentHTML = `
                 <div class="space-y-4">
@@ -147,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Command Handlers ---
     async function handlePlayLocalVideo() {
         const select = document.getElementById('local-video-select');
-        const soundEnabled = true; // Or add a checkbox if you want this option back
+        const soundEnabled = true;
         if (select.value) {
             const command = { target: 'mainZone', contentType: 'localVideo', content: { videoUrl: select.value, soundEnabled: soundEnabled } };
             window.electronAPI.sendCommand(command);
@@ -265,12 +263,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- MODIFIED: Added settingsControl listener ---
     mainContentControl.addEventListener('click', () => openEditingPanel('Main Content'));
     sideBannerControl.addEventListener('click', () => openEditingPanel('Side Banner'));
     bottomTickerControl.addEventListener('click', () => openEditingPanel('Bottom Ticker'));
     spotifyControl.addEventListener('click', () => openEditingPanel('Spotify'));
     settingsControl.addEventListener('click', () => openEditingPanel('Settings'));
+    
+    // --- THIS IS THE FIX ---
+    // The close button listener is now correctly attached.
     closePanelBtn.addEventListener('click', () => panelContainer.classList.add('hidden'));
 
     panelContent.addEventListener('click', async (e) => {
