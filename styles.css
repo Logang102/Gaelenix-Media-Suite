@@ -121,6 +121,10 @@ header h1 {
   justify-content: flex-end;
 }
 
+#editing-panel-container.hidden {
+    display: none;
+}
+
 #editing-panel {
   width: 33.333333%;
   height: 100%;
