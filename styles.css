@@ -54,3 +54,36 @@ header h1 { @apply text-2xl font-bold tracking-wider; }
 .remove-btn {
     @apply text-red-400 hover:text-red-200 font-mono;
 }
+
+.notification-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s, bottom 0.3s;
+}
+
+.notification-toast.show {
+    opacity: 1;
+    visibility: visible;
+    bottom: 30px;
+}
+
+.notification-toast.success {
+    background-color: #28a745; /* Green */
+}
+
+.notification-toast.error {
+    background-color: #dc3545; /* Red */
+}
+
+.settings-btn {
+    @apply text-2xl p-2 rounded-full hover:bg-gray-700 transition-colors;
+}
