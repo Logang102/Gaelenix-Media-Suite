@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+body { @apply bg-gray-800 text-white font-sans antialiased; font-family: 'Inter', sans-serif; }
+#app { @apply h-screen flex flex-col p-4 space-y-4; }
+header h1 { @apply text-2xl font-bold tracking-wider; }
+#tv-selection-container { @apply bg-gray-700 p-3 rounded-lg shadow-lg; }
+#tv-selection-container h2 { @apply text-sm font-bold uppercase text-gray-400 mb-2; }
+#tv-list span { @apply text-sm text-gray-400; }
+#visual-controller { @apply flex-grow grid grid-cols-4 grid-rows-4 gap-4; }
+
+/* UPDATED: Added #control-spotify-zone to this list */
+#control-side-banner, 
+#control-main-content, 
+#control-bottom-ticker,
+#control-spotify-zone { 
+    @apply rounded-lg shadow-lg flex items-center justify-center p-4 cursor-pointer transition-colors; 
+}
+
+/* UPDATED: Added #control-spotify-zone span to this list */
+#control-side-banner span, 
+#control-main-content span, 
+#control-bottom-ticker span,
+#control-spotify-zone span { 
+    @apply font-bold; 
+}
+
+#control-side-banner { @apply col-span-1 row-span-4 bg-blue-900; }
+#control-side-banner:hover { @apply bg-blue-800; }
+
+#control-main-content { @apply col-span-3 row-span-3 bg-purple-900; }
+#control-main-content:hover { @apply bg-purple-800; }
+
+#control-bottom-ticker { @apply col-span-3 row-span-1 bg-red-900; }
+#control-bottom-ticker:hover { @apply bg-red-800; }
+
+#control-spotify-zone { @apply col-span-3 row-span-1 bg-green-900; }
+#control-spotify-zone:hover { @apply bg-green-800; }
+
+#editing-panel-container { @apply absolute inset-0 bg-black bg-opacity-50 flex justify-end; }
+#editing-panel { @apply w-1/3 h-full bg-gray-900 shadow-2xl p-6 flex flex-col; }
+#editing-panel-header { @apply flex justify-between items-center mb-6; }
+#editing-panel-title { @apply text-xl font-bold; }
+#close-panel-btn { @apply text-2xl text-gray-400 hover:text-white; }
+.label-style { @apply block text-sm font-medium text-gray-300; }
+.input-field { @apply mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-white p-2; }
+.btn-primary { @apply w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition-colors; }
+.btn-secondary { @apply bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors; }
+.preview-item { @apply flex justify-between items-center text-xs p-1 bg-gray-800 rounded mb-1; }
+.preview-item span { @apply flex-grow truncate mr-2; }
+/* NEW: Styles for the individual action buttons */
+.send-btn {
+    @apply text-green-400 hover:text-green-200 font-bold px-2;
+}
+.remove-btn {
+    @apply text-red-400 hover:text-red-200 font-mono;
+}

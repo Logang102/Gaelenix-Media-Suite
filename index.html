@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Gaelenix Media Suite - Controller</title>
+    <link rel="stylesheet" href="output.css" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+</head>
+<body>
+    <div id="app">
+        <!-- Main content remains the same -->
+        <header>
+            <h1>GAELENIX MEDIA SUITE</h1>
+        </header>
+        <div id="tv-selection-container">
+            <h2>Target TVs</h2>
+            <div id="tv-list">
+                <span>TV discovery will be implemented in Phase 2...</span>
+            </div>
+        </div>
+        <div id="visual-controller">
+            <div id="control-side-banner"><span>Side Banner</span></div>
+            <div id="control-main-content"><span>Main Content</span></div>
+            <div id="control-spotify-zone"><span>Spotify</span></div>
+            <div id="control-bottom-ticker"><span>Bottom Ticker</span></div>
+        </div>
+        
+        <!-- Hidden Editing Panel -->
+        <div id="editing-panel-container" class="hidden">
+            <div id="editing-panel">
+                <div id="editing-panel-header">
+                    <h3 id="editing-panel-title"></h3>
+                    <button id="close-panel-btn">&times;</button>
+                </div>
+                <div id="editing-panel-content">
+                    <!-- Dynamic content for editing will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="renderer.js"></script>
+</body>
+</html>
