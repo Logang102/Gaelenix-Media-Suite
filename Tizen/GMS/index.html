@@ -1,29 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" 
+    content="default-src * 'unsafe-inline' 'unsafe-eval'; 
+    script-src * 'unsafe-inline' 'unsafe-eval'; 
+    connect-src * 'unsafe-inline'; 
+    img-src * data: blob: 'unsafe-inline'; 
+    media-src * blob: 'unsafe-inline'; 
+    frame-src *; 
+    style-src * 'unsafe-inline';">
     <title>Gaelenix Display</title>
     <link rel="stylesheet" type="text/css" href="css/style.css"/>
 </head>
 <body>
-    <div id="setup-screen" class="fullscreen-prompt" style="display: none;">
+    <div id="setup-screen" class="fullscreen-prompt">
         <div class="prompt-content">
             <h1>Initial Setup</h1>
-            <p id="setup-message">Please enter the Server IP from the controller app.</p>
-            <input type="text" id="ip-input" placeholder="e.g., 192.168.1.100">
+            <p id="setup-message">Enter Server IP and a Name for this TV.</p>
+            
+            <input type="text" id="ip-input" placeholder="Server IP (e.g., 192.168.1.100)">
+            <input type="text" id="name-input" placeholder="TV Name (e.g., Cardio 1)">
+            
             <button id="save-button">Save & Continue</button>
         </div>
     </div>
 
-    <div id="start-screen" class="fullscreen-prompt" style="display: none;">
+    <div id="start-screen" class="fullscreen-prompt">
         <div class="prompt-content">
             <h1>Gaelenix Media Suite</h1>
             <button id="start-button">Press OK to Start</button>
         </div>
     </div>
 
-    <div class="container" style="display: none;">
+    <div class="container">
         <div id="side-banner" class="zone">
             <img src="https://placehold.co/480x810/1F2937/FFFFFF?text=Side+Banner" alt="Promotional Banner">
         </div>

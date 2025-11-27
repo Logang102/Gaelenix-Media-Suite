@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns:tizen="http://tizen.org/ns/widgets" xmlns="http://www.w3.org/ns/widgets" id="http://yourdomain/GMS" version="1.0.0" viewmodes="maximized">
-    <tizen:application id="qo5jPhPxHw.GMS" package="qo5jPhPxHw" required_version="2.3"/>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="http://your-app-id/GMS" version="1.0.1" viewmodes="maximized">
+    <tizen:application id="qo5jPhPxHw.GMS" package="qo5jPhPxHw" required_version="4.0"/>
+    
     <content src="index.html"/>
-    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+    
+    <tizen:content-security-policy>script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.youtube.com https://s.ytimg.com https://www.youtube.com https://www.youtube-nocookie.com; object-src 'self';</tizen:content-security-policy>
+    
+    <access origin="*" subdomains="true"/>
+    
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.audio"/>
+    <tizen:privilege name="http://tizen.org/privilege/volume.set"/>
+    <tizen:privilege name="http://tizen.org/privilege/mediacontroller"/>
+    
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.read"/>
+    
     <icon src="icon.png"/>
-    <tizen:metadata key="http://tizen.org/metadata/app_ui_type/base_screen_resolution" value="extensive"/>
-    <name>GMS</name>
-    <tizen:profile name="tv-samsung"/>
-    <tizen:setting screen-orientation="landscape" context-menu="enable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+    <name>Gaelenix Media Suite</name>
 </widget>
