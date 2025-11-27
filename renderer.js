@@ -4,19 +4,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         ['control-main-content', 'control-side-banner', 'control-bottom-ticker', 'control-spotify-zone', 'control-settings', 'show-preview-btn'].map(id => document.getElementById(id));
     const [panelContainer, panelTitle, panelContent, closePanelBtn] =
         ['editing-panel-container', 'editing-panel-title', 'editing-panel-content', 'close-panel-btn'].map(id => document.getElementById(id));
+    const tvListContainer = document.getElementById('tv-list');
     const notificationEl = document.getElementById('notification-toast');
 
-    // --- State Management & Helpers ---
+    // --- State Management ---
     let mediaFiles = [], tickerMessages = [], selectedBannerImages = [], mediaFolderPath = '', localIpAddress = '';
-    
-    // --- Core UI and Helper Functions ---
+    let connectedTvs = []; 
+    let currentTargetId = 'ALL'; // Default to broadcast
+
+    // --- Core Helper Functions ---
     function showNotification(message, isError = false) {
         notificationEl.textContent = message;
         notificationEl.className = `notification-toast ${isError ? 'error' : 'success'}`;
         notificationEl.classList.add('show');
         setTimeout(() => notificationEl.classList.remove('show'), 3000);
     }
-    
+
+    // --- NEW: Command Sender Wrapper ---
+    // Instead of calling window.electronAPI.sendCommand directly, we use this 
+    // to automatically attach the current targetId (e.g., "Cardio TV" or "ALL").
+    function sendCommand(commandObj) {
+        commandObj.targetId = currentTargetId;
+        window.electronAPI.sendCommand(commandObj);
+    }
+
+    // --- NEW: TV List Management ---
+    window.electronAPI.onTvListUpdated((tvs) => {
+        connectedTvs = tvs;
+        renderTvList();
+    });
+
+    function renderTvList() {
+        // Always start with 'ALL'
+        let html = `<button class="tv-btn ${currentTargetId === 'ALL' ? 'active' : ''}" data-id="ALL">ALL TVs</button>`;
+        
+        connectedTvs.forEach(tvName => {
+            html += `<button class="tv-btn ${currentTargetId === tvName ? 'active' : ''}" data-id="${tvName}">${tvName}</button>`;
+        });
+        
+        tvListContainer.innerHTML = html;
+
+        // Attach listeners to new buttons
+        document.querySelectorAll('.tv-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                currentTargetId = e.target.dataset.id;
+                renderTvList(); // Re-render to update styling
+                showNotification(`Targeting: ${currentTargetId}`);
+            });
+        });
+    }
+
+    // Initialize TV list (start with just ALL)
+    renderTvList();
+
+    // --- Data Helpers ---
     function getYouTubeId(url) {
         let ID = '';
         if (!url) return '';
@@ -50,31 +91,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         panelTitle.textContent = `Editing: ${zoneName}`;
         let contentHTML = '';
 
+        const generateOptions = (filterFn) => mediaFiles.filter(filterFn).map(f => `<option value="${f.url}">${f.name}</option>`).join('');
+        const videoOptions = generateOptions(f => f.name.endsWith('.mp4') || f.name.endsWith('.webm'));
+        const imageOptions = generateOptions(f => !f.name.endsWith('.mp4') && !f.name.endsWith('.webm'));
+        
         if (zoneName === 'Settings') {
-            contentHTML = `
+             contentHTML = `
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div>
                         <p class="label-style">Your Computer's IP Address is:</p>
                         <p style="font-size: 1.5rem; font-weight: bold; color: #a78bfa; margin-top: 0.25rem;">${localIpAddress}</p>
-                        <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem;">Enter this IP into the Tizen app's setup screen.</p>
                     </div>
                     <hr style="border-color: #4b5563; margin: 1rem 0;">
                     <div>
                         <label class="label-style">Media Folder</label>
-                        <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.5rem;">This is the folder where the app looks for images and videos.</p>
-                        <p style="font-size: 0.75rem; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${mediaFolderPath}">${mediaFolderPath || 'No folder selected.'}</p>
-                        <button id="select-folder-btn" class="btn-secondary" style="margin-top: 0.5rem;">Select New Folder</button>
+                        <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.5rem;">${mediaFolderPath || 'No folder selected.'}</p>
+                        <button id="select-folder-btn" class="btn-secondary">Select New Folder</button>
                     </div>
                 </div>`;
         } else if (zoneName === 'Main Content') {
-            const videoOptions = mediaFiles.filter(f => f.name.endsWith('.mp4') || f.name.endsWith('.webm')).map(f => `<option value="${f.url}">${f.name}</option>`).join('');
-            contentHTML = `
+             contentHTML = `
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <p style="font-size: 0.75rem; color: #9ca3af;">Changes here are sent to the TV immediately and saved for next time.</p>
-                    <hr style="border-color: #4b5563;">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <input type="checkbox" id="sound-enabled-checkbox" style="width: 1rem; height: 1rem;">
-                        <label for="sound-enabled-checkbox" class="label-style" style="margin-bottom: 0;">Start with Sound (May not work on all TVs)</label>
+                        <label for="sound-enabled-checkbox" class="label-style" style="margin-bottom: 0;">Start with Sound</label>
                     </div>
                     <hr style="border-color: #4b5563;">
                     <div>
@@ -86,46 +126,84 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>
                     <div>
-                        <label for="youtube-url" class="label-style">YouTube URL (Video or Playlist)</label>
+                        <label for="youtube-url" class="label-style">YouTube URL</label>
                         <input type="text" id="youtube-url" class="input-field" placeholder="Enter a YouTube URL...">
                         <button id="play-youtube-btn" class="btn-primary" style="margin-top: 0.5rem;">Play</button>
                     </div>
                     <div>
-                       <label for="local-video-select" class="label-style">Select Local Video</label>
-                       <div style="display: flex; gap: 0.5rem;">
-                           <select id="local-video-select" class="input-field"><option value="">-- Select a video --</option>${videoOptions}</select>
-                           <button id="play-local-video-btn" class="btn-primary" style="flex-shrink: 0;">Play</button>
-                       </div>
+                        <label for="local-video-select" class="label-style">Select Local Video</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="local-video-select" class="input-field"><option value="">-- Select a video --</option>${videoOptions}</select>
+                            <button id="play-local-video-btn" class="btn-primary" style="flex-shrink: 0;">Play</button>
+                        </div>
                     </div>
                 </div>`;
         } else if (zoneName === 'Bottom Ticker') {
              contentHTML = `
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div>
-                        <label class="label-style">Message Queue</label>
-                        <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.5rem;">Click 'Send' for a single message, or 'Send Queue' for all.</p>
-                        <div id="ticker-message-list" style="margin: 0.5rem 0; padding: 0.5rem; background-color: #1f2937; border-radius: 0.375rem; min-height: 100px;"></div>
-                        <div style="display: flex; gap: 0.5rem;"><input type="text" id="new-ticker-message" class="input-field" placeholder="Add a message..."><button id="add-ticker-msg-btn" class="btn-secondary" style="flex-shrink: 0;">Add</button></div>
+                        <label class="label-style">Ticker Appearance</label>
+                        <div style="display: flex; gap: 2rem; margin-top: 0.5rem;">
+                            <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                <span style="font-size: 0.75rem; color: #9ca3af;">Background</span>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="color" id="ticker-bg-input" value="#BE123C" style="width: 50px; height: 40px; border: none; cursor: pointer;">
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                <span style="font-size: 0.75rem; color: #9ca3af;">Text</span>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="color" id="ticker-text-input" value="#FFFFFF" style="width: 50px; height: 40px; border: none; cursor: pointer;">
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: end;">
+                                <button id="update-ticker-style-btn" class="btn-secondary">Apply Colors</button>
+                            </div>
+                        </div>
                     </div>
-                    <button id="send-queue-btn" class="btn-primary">Send Entire Queue to TVs</button>
+                    <hr style="border-color: #4b5563; margin: 0;">
+                    <div>
+                        <label class="label-style">Option A: Static Image</label>
+                        <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.5rem;">Display a banner image instead of scrolling text.</p>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="ticker-image-select" class="input-field"><option value="">-- Select Image --</option>${imageOptions}</select>
+                            <button id="set-ticker-image-btn" class="btn-primary" style="flex-shrink: 0;">Set Image</button>
+                        </div>
+                    </div>
+                    <hr style="border-color: #4b5563; margin: 0;">
+                    <div>
+                        <label class="label-style">Option B: Scrolling Text</label>
+                        <div id="ticker-message-list" style="margin: 0.5rem 0; padding: 0.5rem; background-color: #1f2937; border-radius: 0.375rem; min-height: 100px;"></div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="new-ticker-message" class="input-field" placeholder="Add a message...">
+                            <button id="add-ticker-msg-btn" class="btn-secondary" style="flex-shrink: 0;">Add</button>
+                        </div>
+                    </div>
+                    <button id="send-queue-btn" class="btn-primary">Send Text Queue</button>
                 </div>`;
         } else if (zoneName === 'Side Banner') {
-            const imageOptions = mediaFiles.filter(f => !f.name.endsWith('.mp4') && !f.name.endsWith('.webm')).map(f => `<option value="${f.url}">${f.name}</option>`).join('');
             contentHTML = `
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div>
-                        <label for="image-select" class="label-style">Add Image to Carousel</label>
+                        <label class="label-style">Option A: Promo Video (Muted)</label>
                         <div style="display: flex; gap: 0.5rem;">
-                           <select id="image-select" class="input-field"><option value="">-- Select an image --</option>${imageOptions}</select>
-                           <button id="add-image-btn" class="btn-secondary" style="flex-shrink: 0;">Add</button>
+                            <select id="banner-video-select" class="input-field"><option value="">-- Select Video --</option>${videoOptions}</select>
+                            <button id="play-banner-video-btn" class="btn-primary" style="flex-shrink: 0;">Play Video</button>
+                        </div>
+                    </div>
+                    <hr style="border-color: #4b5563;">
+                    <div>
+                        <label class="label-style">Option B: Image Carousel</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="image-select" class="input-field"><option value="">-- Select Image --</option>${imageOptions}</select>
+                            <button id="add-image-btn" class="btn-secondary" style="flex-shrink: 0;">Add</button>
                         </div>
                         <div id="image-preview-list" style="margin: 0.5rem 0; padding: 0.5rem; background-color: #1f2937; border-radius: 0.375rem; min-height: 100px;"></div>
                     </div>
-                    <button id="update-banner-btn" class="btn-primary">Update Banner on TVs</button>
+                    <button id="update-banner-btn" class="btn-primary">Start Carousel</button>
                 </div>`;
         } else if (zoneName === 'Spotify') {
-             contentHTML = `
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
+             contentHTML = `<div style="display: flex; flex-direction: column; gap: 1rem;">
                     <button id="login-spotify-btn" class="btn-secondary">Login to Spotify</button>
                     <hr style="border-color: #4b5563; margin: 1rem 0;">
                     <p style="font-size: 0.75rem; color: #9ca3af;">Enter a Spotify Track URI</p>
@@ -150,7 +228,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (mediaFolderPath) mediaFiles = await window.electronAPI.getMediaFiles();
     }
 
-    // --- Command Handlers ---
+    // --- Command Handlers (UPDATED TO USE sendCommand WRAPPER) ---
+    
     function handlePlayVideo() {
         const urlInput = document.getElementById('youtube-url');
         const soundEnabled = document.getElementById('sound-enabled-checkbox').checked;
@@ -165,7 +244,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 command = { target: 'mainZone', contentType: 'youtube', content: { videoId, soundEnabled } };
             } else { return showNotification('Invalid YouTube URL.', true); }
         }
-        window.electronAPI.sendCommand(command);
+        sendCommand(command); // Use wrapper
         window.electronAPI.saveMainContent(command);
         showNotification(`Playing YouTube content...`);
     }
@@ -175,12 +254,101 @@ document.addEventListener('DOMContentLoaded', async () => {
         const soundEnabled = document.getElementById('sound-enabled-checkbox').checked;
         if (select.value) {
             const command = { target: 'mainZone', contentType: 'localVideo', content: { videoUrl: select.value, soundEnabled } };
-            window.electronAPI.sendCommand(command);
+            sendCommand(command); // Use wrapper
             window.electronAPI.saveMainContent(command);
             showNotification(`Playing: ${select.options[select.selectedIndex].text}`);
         }
     }
+
+    function handlePlayBannerVideo() {
+        const select = document.getElementById('banner-video-select');
+        if (select && select.value) {
+            sendCommand({ 
+                target: 'banner', 
+                contentType: 'video', 
+                content: { videoUrl: select.value } 
+            });
+            showNotification('Playing video on side banner.');
+            closePanelBtn.click();
+        }
+    }
+
+    function handleSetTickerImage() {
+        const select = document.getElementById('ticker-image-select');
+        if (select && select.value) {
+            sendCommand({ 
+                target: 'ticker', 
+                contentType: 'image', 
+                content: { imageUrl: select.value } 
+            });
+            showNotification('Ticker set to static image.');
+            closePanelBtn.click();
+        }
+    }
+
+    function handleUpdateTickerStyle() {
+        const bgInput = document.getElementById('ticker-bg-input');
+        const textInput = document.getElementById('ticker-text-input');
+        if (bgInput && textInput) {
+            sendCommand({ 
+                target: 'style', 
+                content: { 
+                    section: 'ticker', 
+                    backgroundColor: bgInput.value,
+                    color: textInput.value 
+                } 
+            });
+            showNotification(`Ticker style updated.`);
+        }
+    }
     
+    function handleUpdateBanner() {
+        const command = { target: 'banner', contentType: 'carousel', content: { images: selectedBannerImages } };
+        sendCommand(command); // Use wrapper
+        showNotification('Side banner has been updated.');
+        closePanelBtn.click();
+    }
+    
+    function handleSendTickerQueue() {
+        if (tickerMessages.length === 0) return showNotification('Ticker queue is empty.', true);
+        const command = { target: 'ticker', contentType: 'text', content: { messages: tickerMessages } };
+        sendCommand(command); // Use wrapper
+        showNotification('Ticker queue sent to TVs.');
+        closePanelBtn.click();
+    }
+    
+    function handleSendSingleTickerMessage(index) {
+        const singleMessage = tickerMessages[index];
+        if (singleMessage) {
+            const command = { target: 'ticker', content: { messages: [singleMessage] } };
+            sendCommand(command); // Use wrapper
+            showNotification(`Sent message: "${singleMessage}"`);
+        }
+    }
+
+    async function handlePlaySpotify() {
+        const trackUri = document.getElementById('spotify-uri-input').value;
+        if (!trackUri) return showNotification('Please enter a Spotify track URI.', true);
+        const result = await window.electronAPI.spotifyPlay(trackUri);
+        if (result.error) return showNotification(`Spotify Error: ${result.error}`, true);
+        const { mainContentState } = await window.electronAPI.getInitialData();
+        if (mainContentState) {
+            // Mute current video while playing music
+            const muteCommand = { target: 'mainZone', contentType: mainContentState.contentType, content: { ...mainContentState.content, soundEnabled: false } };
+            sendCommand(muteCommand); // Use wrapper
+        }
+        showNotification('Playing track on Spotify.');
+    }
+    
+    async function handlePauseSpotify() {
+        const result = await window.electronAPI.spotifyPause();
+        if (result.error) return showNotification(`Spotify Error: ${result.error}`, true);
+        const { mainContentState } = await window.electronAPI.getInitialData();
+        if (mainContentState && mainContentState.content.soundEnabled) sendCommand(mainContentState); // Use wrapper
+        showNotification('Music paused.');
+    }
+
+    // --- Helpers for List Management ---
     function handleAddImageToBanner() {
         const select = document.getElementById('image-select');
         if (select.value && !selectedBannerImages.includes(select.value)) {
@@ -189,20 +357,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.electronAPI.saveBannerImages(selectedBannerImages);
         }
     }
-    
-    function handleUpdateBanner() {
-        const command = { target: 'banner', contentType: 'carousel', content: { images: selectedBannerImages } };
-        window.electronAPI.sendCommand(command);
-        showNotification('Side banner has been updated.');
-        closePanelBtn.click();
-    }
-    
     function handleRemoveImage(index) {
         selectedBannerImages.splice(index, 1);
         renderImagePreview();
         window.electronAPI.saveBannerImages(selectedBannerImages);
     }
-    
     function handleAddTickerMessage() {
         const input = document.getElementById('new-ticker-message');
         if (input.value.trim()) {
@@ -212,49 +371,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.electronAPI.saveTickerMessages(tickerMessages);
         }
     }
-    
-    function handleSendTickerQueue() {
-        if (tickerMessages.length === 0) return showNotification('Ticker queue is empty.', true);
-        const command = { target: 'ticker', content: { messages: tickerMessages } };
-        window.electronAPI.sendCommand(command);
-        showNotification('Ticker queue sent to TVs.');
-        closePanelBtn.click();
-    }
-    
-    function handleSendSingleTickerMessage(index) {
-        const singleMessage = tickerMessages[index];
-        if (singleMessage) {
-            const command = { target: 'ticker', content: { messages: [singleMessage] } };
-            window.electronAPI.sendCommand(command);
-            showNotification(`Sent message: "${singleMessage}"`);
-        }
-    }
-
     function handleRemoveTickerMessage(index) {
         tickerMessages.splice(index, 1);
         renderTickerPreview();
         window.electronAPI.saveTickerMessages(tickerMessages);
-    }
-    
-    async function handlePlaySpotify() {
-        const trackUri = document.getElementById('spotify-uri-input').value;
-        if (!trackUri) return showNotification('Please enter a Spotify track URI.', true);
-        const result = await window.electronAPI.spotifyPlay(trackUri);
-        if (result.error) return showNotification(`Spotify Error: ${result.error}`, true);
-        const { mainContentState } = await window.electronAPI.getInitialData();
-        if (mainContentState) {
-            const muteCommand = { target: 'mainZone', contentType: mainContentState.contentType, content: { ...mainContentState.content, soundEnabled: false } };
-            window.electronAPI.sendCommand(muteCommand);
-        }
-        showNotification('Playing track on Spotify.');
-    }
-    
-    async function handlePauseSpotify() {
-        const result = await window.electronAPI.spotifyPause();
-        if (result.error) return showNotification(`Spotify Error: ${result.error}`, true);
-        const { mainContentState } = await window.electronAPI.getInitialData();
-        if (mainContentState && mainContentState.content.soundEnabled) window.electronAPI.sendCommand(mainContentState);
-        showNotification('Music paused.');
     }
 
     // --- Event Listeners ---
@@ -283,7 +403,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (target.classList.contains('layout-btn')) {
             const mode = target.dataset.mode;
-            window.electronAPI.sendCommand({ target: 'layout', content: { mode: mode } });
+            sendCommand({ target: 'layout', content: { mode: mode } }); // Use wrapper
             showNotification(`Layout changed to ${mode}.`);
         }
         else if (id === 'play-youtube-btn') handlePlayVideo();
@@ -292,6 +412,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (id === 'update-banner-btn') handleUpdateBanner();
         else if (id === 'add-ticker-msg-btn') handleAddTickerMessage();
         else if (id === 'send-queue-btn') handleSendTickerQueue();
+        
+        else if (id === 'play-banner-video-btn') handlePlayBannerVideo();
+        else if (id === 'set-ticker-image-btn') handleSetTickerImage();
+        else if (id === 'update-ticker-style-btn') handleUpdateTickerStyle();
+
         else if (target.classList.contains('remove-btn')) {
             const index = parseInt(target.dataset.index, 10);
             if (target.closest('#image-preview-list')) handleRemoveImage(index);
@@ -316,4 +441,4 @@ document.addEventListener('DOMContentLoaded', async () => {
             await window.electronAPI.selectMediaFolder();
         }
     });
-});
+}); // End DOMContentLoaded

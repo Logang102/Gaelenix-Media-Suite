@@ -22,4 +22,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   spotifyLogin: () => ipcRenderer.invoke('spotify-login'),
   spotifyPlay: (trackUri) => ipcRenderer.invoke('spotify-play', trackUri),
   spotifyPause: () => ipcRenderer.invoke('spotify-pause'),
+
+  onPreviewCommand: (callback) => ipcRenderer.on('preview-command', (_event, value) => callback(value)),
+  // Add inside the exposeInMainWorld object:
+  onTvListUpdated: (callback) => ipcRenderer.on('tv-list-updated', (_event, value) => callback(value)),
 });
